@@ -5,9 +5,35 @@ use solana_program::pubkey::Pubkey;
 use solana_sdk::{compute_budget::ComputeBudgetInstruction, signature::Signer};
 
 use crate::{cu_limits::CU_LIMIT_CLAIM, utils::proof_pubkey, Miner};
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+#[derive(Serialize, Deserialize, Debug)]
+struct GasTrackerResponse {
+    sol: SolData,
+}
 
+#[derive(Serialize, Deserialize, Debug)]
+struct SolData {
+    per_transaction: PerTransaction,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct PerTransaction {
+    percentiles: Percentiles,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Percentiles {
+    #[serde(rename = "25")]
+    p25: u64,
+    #[serde(rename = "50")]
+    p50: u64,
+    #[serde(rename = "75")]
+    p75: u64,
+}
 impl Miner {
     pub async fn claim(&self, beneficiary: Option<String>, amount: Option<f64>) {
+        let mut fuckmesilly: u64 = 0;
         let signer = self.signer();
         let pubkey = signer.pubkey();
         let client = self.rpc_client.clone();
@@ -33,7 +59,38 @@ impl Miner {
         };
         let amountf = (amount as f64) / (10f64.powf(ore::TOKEN_DECIMALS as f64));
         let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_CLAIM);
-        let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(self.priority_fee);
+        let url = "https://quicknode.com/_gas-tracker?slug=solana";
+        let client = reqwest::Client::new();
+        let resp = match client
+            .get(url)
+            .header("Accept", "application/json")
+            .send()
+            .await
+        {
+            Ok(response) => response.json::<GasTrackerResponse>().await.ok(),
+            Err(_) => None,
+        };
+        let p25 = resp
+            .as_ref()
+            .unwrap()
+            .clone()
+            .sol
+            .per_transaction
+            .percentiles
+            .p25;
+        let p50 = resp
+            .as_ref()
+            .unwrap()
+            .clone()
+            .sol
+            .per_transaction
+            .percentiles
+            .p50;
+        let p75 = resp.unwrap().sol.per_transaction.percentiles.p75;
+        println!("[i] p50: {} \t p75: {}", p50, p75);
+        // Perform the calculation as peryour request
+        fuckmesilly = rand::thread_rng().gen_range(((p50 / 2) + p50)..(p25 / 5 + p75));
+        let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(fuckmesilly);
         let ix = ore::instruction::claim(pubkey, beneficiary, amount);
         println!("Submitting claim transaction...");
         match self
