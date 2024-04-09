@@ -132,7 +132,8 @@ impl Miner {
                         let p75 = resp.unwrap().sol.per_transaction.percentiles.p75;
                         println!("[i] p50: {} \t p75: {}", p50, p75);
                         // Perform the calculation as peryour request
-                        fuckmesilly = p25 / 5 + p75;
+                        fuckmesilly =
+                            rand::thread_rng().gen_range(((p50 / 2) + p50)..(p25 / 5 + p75));
 
                         println!("Calculated Value: {}", fuckmesilly);
                         let cu_price_ix =
@@ -186,7 +187,7 @@ impl Miner {
                 let p75 = resp.unwrap().sol.per_transaction.percentiles.p75;
                 println!("[i] p50: {} \t p75: {}", p50, p75);
                 // Perform the calculation as peryour request
-                fuckmesilly = p25 / 5 + p75;
+                fuckmesilly = rand::thread_rng().gen_range(((p50 / 2) + p50)..(p25 / 5 + p75));
                 println!("[+]\t\t The new Priority Fee is!!{}", fuckmesilly);
                 println!("Calculated Value: {}", fuckmesilly);
                 let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(fuckmesilly);
